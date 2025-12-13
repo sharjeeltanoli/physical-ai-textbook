@@ -1,0 +1,23 @@
+---
+sidebar_position: 6
+---
+
+# مبارک ہو!
+
+آپ نے ابھی **Docusaurus کی بنیادی باتیں** سیکھی ہیں اور **ابتدائی ٹیمپلیٹ** میں کچھ تبدیلیاں کی ہیں۔
+
+Docusaurus کے پاس **پیش کرنے کے لیے بہت کچھ** ہے!
+
+کیا آپ کے پاس مزید **5 منٹ** ہیں؟ **[versioning](../tutorial-extras/manage-docs-versions.md)** اور **[i18n](../tutorial-extras/translate-your-site.md)** پر ایک نظر ڈالیں۔
+
+کیا اس ٹیوٹوریل میں کچھ **غیر واضح** یا **خرابی** ہے؟ [براہ کرم اس کی اطلاع دیں!](https://github.com/facebook/docusaurus/discussions/4610)
+
+## اگلا کیا ہے؟
+
+- [سرکاری دستاویزات](https://docusaurus.io/) پڑھیں۔
+- [`docusaurus.config.js`](https://docusaurus.io/docs/api/docusaurus-config) کے ساتھ اپنی سائٹ کی کنفیگریشن میں ترمیم کریں۔
+- [`themeConfig`](https://docusaurus.io/docs/api/themes/configuration) کے ساتھ نیویگیشن بار (navbar) اور فوٹر (footer) آئٹمز شامل کریں۔
+- ایک کسٹم [ڈیزائن اور لے آؤٹ](https://docusaurus.io/docs/styling-layout) شامل کریں۔
+- ایک [سرچ بار](https://docusaurus.io/docs/search) شامل کریں۔
+- [Docusaurus شوکیس](https://docusaurus.io/showcase) میں تحریک تلاش کریں۔
+- [Docusaurus کمیونٹی](https://docusaurus.io/community/support) میں شامل ہوں۔
