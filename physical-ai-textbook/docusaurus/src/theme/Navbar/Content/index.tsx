@@ -16,6 +16,8 @@ import NavbarMobileSidebarToggle from '@theme/Navbar/MobileSidebar/Toggle';
 import NavbarLogo from '@theme/Navbar/Logo';
 import NavbarSearch from '@theme/Navbar/Search';
 import AuthDisplay from '@site/src/components/AuthDisplay';
+import LocaleButton from '@site/src/theme/Navbar/LocaleButton';
+import TranslateButton from '@site/src/components/TranslateButton';
 
 import styles from './styles.module.css';
 
@@ -94,9 +96,13 @@ export default function NavbarContent(): ReactNode {
         // TODO stop hardcoding items?
         // Ask the user to add the respective navbar items => more flexible
         <>
-          <NavbarItems items={rightItems} />
-          <AuthDisplay />
-          <NavbarColorModeToggle className={styles.colorModeToggle} />
+                    <NavbarItems items={rightItems} />
+                    <AuthDisplay />
+                    <LocaleButton />
+                    <div className="navbar__item">
+                      <TranslateButton className="navbar__link" />
+                    </div>
+                    <NavbarColorModeToggle className={styles.colorModeToggle} />
           {!searchBarItem && (
             <NavbarSearch>
               <SearchBar />
