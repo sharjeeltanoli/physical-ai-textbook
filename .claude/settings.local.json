@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "SlashCommand(/sp.tasks:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

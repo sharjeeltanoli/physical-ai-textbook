@@ -1,0 +1,73 @@
+/**
+ * Any CSS here will be applied to all pages.
+ */
+
+/* You can override some of the Sass variables in the Docusaurus theme here to
+   effect your changes globally.
+
+   For example, if you want to change the screen sizes for desktop,
+   desktop with sidebar, tablet, and mobile, you can use these Sass variables:
+
+$docusaurus-desktop-width: 996px;
+$docusaurus-desktop-sidebar-width: 768px;
+$docusaurus-tablet-width: 768px;
+$docusaurus-mobile-width: 576px;
+
+   The Sass file must be compiled into CSS and output into a .css file which
+   is then referenced by the customCss field in docusaurus.config.js.
+
+   This example uses a custom property (`--ifm-color-primary`) to change the
+   main color of your website.
+*/
+:root {
+  --ifm-color-primary: #25c2a0;
+  --ifm-color-primary-dark: #21af90;
+  --ifm-color-primary-darker: #1fa588;
+  --ifm-color-primary-darkest: #1a8870;
+  --ifm-color-primary-light: #29d5b0;
+  --ifm-color-primary-lighter: #32d8b4;
+  --ifm-color-primary-lightest: #4fddbf;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* For readability concerns, you should modify the Sass variables instead of CSS variables. */
+[data-theme='dark'] {
+  --ifm-color-primary: #25c2a0;
+  --ifm-color-primary-dark: #21af90;
+  --ifm-color-primary-darker: #1fa588;
+  --ifm-color-primary-darkest: #1a8870;
+  --ifm-color-primary-light: #29d5b0;
+  --ifm-color-primary-lighter: #32d8b4;
+  --ifm-color-primary-lightest: #4fddbf;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .navbar__title {
+  color: white;
+}
+
+[data-theme='dark'] .hero__title {
+  color: white;
+}
+
+[data-theme='dark'] .hero__subtitle {
+  color: white;
+}
+
+.hero--primary {
+  background-image: url('/img/robot.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+.button--animated {
+  transition: transform 0.3s ease-in-out;
+}
+
+.button--animated:hover {
+  transform: scale(1.05);
+}
