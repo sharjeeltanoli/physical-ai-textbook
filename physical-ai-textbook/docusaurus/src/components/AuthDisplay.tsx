@@ -3,7 +3,7 @@ import Link from '@docusaurus/Link';
 import {useHistory} from '@docusaurus/router';
 import BetterAuth from '../utils/betterAuth';
 
-function AuthDisplay() {
+function AuthDisplay({ className }: { className?: string }) {
   const [currentUser, setCurrentUser] = useState(null);
   const history = useHistory();
 
@@ -17,10 +17,12 @@ function AuthDisplay() {
     history.push('/');
   };
 
+  const linkClassName = className || "navbar__item navbar__link";
+
   if (currentUser) {
     return (
       <Link
-        className="navbar__item navbar__link"
+        className={linkClassName}
         to="#" // Assuming a profile page will be created
         onClick={handleSignOut}>
         Sign Out ({currentUser.username})
@@ -30,7 +32,7 @@ function AuthDisplay() {
 
   return (
     <Link
-      className="navbar__item navbar__link"
+      className={linkClassName}
       to="/auth">
       Sign In
     </Link>

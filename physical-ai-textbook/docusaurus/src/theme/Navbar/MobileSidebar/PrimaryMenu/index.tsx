@@ -2,6 +2,8 @@ import React, {type ReactNode} from 'react';
 import {useThemeConfig} from '@docusaurus/theme-common';
 import {useNavbarMobileSidebar} from '@docusaurus/theme-common/internal';
 import NavbarItem, {type Props as NavbarItemConfig} from '@theme/NavbarItem';
+import AuthDisplay from '@site/src/components/AuthDisplay';
+import TranslateButton from '@site/src/components/TranslateButton';
 
 function useNavbarItems() {
   // TODO temporary casting until ThemeConfig type is improved
@@ -26,6 +28,12 @@ export default function NavbarMobilePrimaryMenu(): ReactNode {
           key={i}
         />
       ))}
+      <li className="menu__list-item">
+        <AuthDisplay className="menu__link" />
+      </li>
+      <li className="menu__list-item">
+        <TranslateButton className="menu__link" />
+      </li>
     </ul>
   );
 }
