@@ -1,127 +1,206 @@
-import logging
+import os
 import time
-from fastapi import FastAPI, HTTPException, Body
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+import requests
+import xml.etree.ElementTree as ET
+import trafilatura
+import cohere
 
-# Import the RAGAgent class from your refactored agent.py
-from agent import RAGAgent
+from dotenv import load_dotenv
+from qdrant_client import QdrantClient
+from qdrant_client.models import VectorParams, Distance, PointStruct
 
 # -------------------------------------
-# CONFIGURATION
+# LOAD ENV
 # -------------------------------------
-# Set up basic logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+load_dotenv()
 
-# Initialize the FastAPI app
-app = FastAPI(
-    title="Physical AI Textbook RAG API",
-    description="An API for querying the Physical AI & Humanoid Robotics textbook using a RAG agent.",
-    version="1.0.0"
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+# -------------------------------------
+# CONFIG
+# -------------------------------------
+SITEMAP_URL = "https://physical-ai-textbook-six.vercel.app/sitemap.xml"
+COLLECTION_NAME = "physical_ai_book"
+
+# Cohere
+EMBED_MODEL = "embed-english-v3.0"
+cohere_client = cohere.Client(COHERE_API_KEY)
+
+# Qdrant
+qdrant = QdrantClient(
+    url=QDRANT_URL,
+    api_key=QDRANT_API_KEY
 )
 
-# Add CORS middleware to allow all origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# -------------------------------------
+# STEP 1 — Extract URLs from sitemap
+# -------------------------------------
+def get_all_urls(sitemap_url):
+    """Extract all URLs from sitemap.xml"""
+    try:
+        xml = requests.get(sitemap_url, timeout=10).text
+        root = ET.fromstring(xml)
+        urls = []
 
-# This will hold the initialized RAGAgent instance
-rag_agent: RAGAgent
+        for child in root:
+            loc = child.find("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
+            if loc is not None:
+                urls.append(loc.text)
+
+        print("\n✅ URLs Found:")
+        for u in urls:
+            print(" -", u)
+
+        return urls
+
+    except Exception as e:
+        print(f"❌ Sitemap error: {e}")
+        return []
 
 # -------------------------------------
-# PYDANTIC MODELS
+# STEP 2 — Extract page text
 # -------------------------------------
-class QueryRequest(BaseModel):
-    query: str = Field(
-        ..., 
-        description="The user's query.",
-        max_length=2000
+def extract_text_from_url(url):
+    """Extract clean text using trafilatura"""
+    try:
+        html = requests.get(url, timeout=10).text
+        text = trafilatura.extract(html)
+
+        if not text:
+            print(f"⚠️ No content extracted: {url}")
+
+        return text
+
+    except Exception as e:
+        print(f"❌ Extraction error ({url}): {e}")
+        return None
+
+# -------------------------------------
+# STEP 3 — Chunk text
+# -------------------------------------
+def chunk_text(text, max_chars=1000):
+    """Split text into semantic chunks"""
+    chunks = []
+
+    while len(text) > max_chars:
+        split_pos = text[:max_chars].rfind(". ")
+        split_pos = split_pos + 1 if split_pos != -1 else max_chars
+
+        chunks.append(text[:split_pos].strip())
+        text = text[split_pos:].strip()
+
+    if text:
+        chunks.append(text)
+
+    return chunks
+
+# -------------------------------------
+# STEP 4 — Create embeddings (Cohere)
+# -------------------------------------
+def embed_text(text):
+    response = cohere_client.embed(
+        model=EMBED_MODEL,
+        input_type="search_document",
+        texts=[text]
+    )
+    return response.embeddings[0]
+
+# -------------------------------------
+# STEP 5 — Create Qdrant collection
+# -------------------------------------
+def create_collection():
+    print("\n🔧 Creating Qdrant collection...")
+    qdrant.recreate_collection(
+        collection_name=COLLECTION_NAME,
+        vectors_config=VectorParams(
+            size=1024,  # Cohere embedding dimension
+            distance=Distance.COSINE
+        )
+    )
+    print("✅ Collection ready")
+
+# -------------------------------------
+# STEP 6 — Save chunk to Qdrant
+# -------------------------------------
+def save_chunk(chunk, chunk_id, url):
+    vector = embed_text(chunk)
+
+    qdrant.upsert(
+        collection_name=COLLECTION_NAME,
+        points=[
+            PointStruct(
+                id=chunk_id,
+                vector=vector,
+                payload={
+                    "url": url,
+                    "text": chunk,
+                    "chunk_id": chunk_id
+                }
+            )
+        ]
     )
 
-class MatchedChunk(BaseModel):
-    content: str
-    url: str
-    similarity_score: float
+# -------------------------------------
+# MAIN INGESTION PIPELINE
+# -------------------------------------
+def ingest_book():
+    print("\n🚀 Starting RAG ingestion pipeline")
 
-class QueryResponse(BaseModel):
-    answer: str
-    sources: List[str]
-    matched_chunks: List[MatchedChunk]
-    status: str = "success"
+    urls = get_all_urls(SITEMAP_URL)
+    if not urls:
+        print("❌ No URLs found. Exiting.")
+        return
 
-class ErrorResponse(BaseModel):
-    status: str = "error"
-    message: str
+    create_collection()
+
+    global_id = 1
+    total_chunks = 0
+
+    for idx, url in enumerate(urls, 1):
+        print(f"\n📄 ({idx}/{len(urls)}) Processing: {url}")
+
+        text = extract_text_from_url(url)
+        if not text:
+            continue
+
+        chunks = chunk_text(text)
+        print(f"   🧩 {len(chunks)} chunks created")
+
+        for chunk in chunks:
+            save_chunk(chunk, global_id, url)
+            print(f"   ✅ Stored chunk {global_id}")
+
+            global_id += 1
+            total_chunks += 1
+
+            # Cohere rate limit safety
+            time.sleep(1)
+
+    print("\n" + "=" * 50)
+    print("✅ INGESTION COMPLETE")
+    print(f"📊 Total chunks stored: {total_chunks}")
+    print(f"🔗 Pages processed: {len(urls)}")
+    print("=" * 50)
 
 # -------------------------------------
-# API LIFECYCLE EVENTS
+# COLLECTION INFO
 # -------------------------------------
-@app.on_event("startup")
-async def startup_event():
-    """
-    Initializes the RAGAgent once when the application starts.
-    This prevents reloading the model on every request.
-    """
-    global rag_agent
-    logging.info("Application startup: Initializing RAGAgent...")
-    try:
-        rag_agent = RAGAgent()
-        logging.info("RAGAgent initialized successfully.")
-    except Exception as e:
-        logging.error(f"Failed to initialize RAGAgent: {e}", exc_info=True)
-        # Depending on the desired behavior, you might want the app to fail starting
-        # if the agent can't be initialized.
-        raise RuntimeError("Could not initialize RAGAgent.") from e
+def check_collection():
+    info = qdrant.get_collection(COLLECTION_NAME)
+    print("\n📊 Collection Info")
+    print(f"   Name: {COLLECTION_NAME}")
+    print(f"   Points: {info.points_count}")
+    print(f"   Vector size: {info.config.params.vectors.size}")
 
 # -------------------------------------
-# API ENDPOINTS
+# ENTRY POINT
 # -------------------------------------
-@app.get("/health", summary="Health Check", tags=["Management"])
-async def health_check():
-    """
-    A simple health check endpoint to confirm the API is running.
-    """
-    return {"status": "ok", "message": "API is running"}
+if __name__ == "__main__":
+    import sys
 
-@app.post(
-    "/ask",
-    response_model=QueryResponse,
-    responses={500: {"model": ErrorResponse}},
-    summary="Ask the RAG Agent",
-    tags=["RAG"]
-)
-async def ask_question(request: QueryRequest = Body(...)):
-    """
-    Receives a query, processes it with the RAG agent, and returns the answer.
-    """
-    query = request.query
-    logging.info(f"Received query: '{query}'")
-    start_time = time.time()
-
-    try:
-        # Ensure agent is initialized
-        if not rag_agent:
-            raise HTTPException(status_code=503, detail="RAG Agent is not available.")
-
-        # Call the agent's query method
-        result = rag_agent.query_agent(query)
-        
-        # Create and return the response
-        response = QueryResponse(**result)
-        return response
-
-    except Exception as e:
-        logging.error(f"Error processing query '{query}': {e}", exc_info=True)
-        # Return a clean JSON error response
-        return HTTPException(
-            status_code=500,
-            detail={"status": "error", "message": "An internal error occurred while processing the request."}
-        )
-    finally:
-        processing_time = (time.time() - start_time) * 1000
-        logging.info(f"Query processed in {processing_time:.2f} ms")
+    if len(sys.argv) > 1 and sys.argv[1] == "check":
+        check_collection()
+    else:
+        ingest_book()

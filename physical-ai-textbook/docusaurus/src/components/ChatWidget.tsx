@@ -10,6 +10,7 @@ const ChatWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBoxRef = useRef<HTMLDivElement>(null); // Ref for the chat box itself
 
@@ -21,14 +22,51 @@ const ChatWidget: React.FC = () => {
     setInputValue(e.target.value);
   };
 
-  const handleSendMessage = () => {
-    if (inputValue.trim()) {
-      setMessages((prevMessages) => [...prevMessages, { text: inputValue, sender: 'user' }]);
+  const handleSendMessage = async () => {
+    const userMessage = inputValue.trim();
+    if (userMessage) {
+      // Add user message to the chat
+      setMessages((prevMessages) => [...prevMessages, { text: userMessage, sender: 'user' }]);
       setInputValue('');
-      // Simulate bot response (no AI logic here as per requirements)
+      setIsLoading(true);
+
+      // Show typing indicator
       setTimeout(() => {
-        setMessages((prevMessages) => [...prevMessages, { text: "Hello! I'm an AI assistant. How can I help you?", sender: 'bot' }]);
+        setMessages((prevMessages) => [...prevMessages, { text: '...', sender: 'bot' }]);
       }, 500);
+
+
+      try {
+        const response = await fetch('http://localhost:8000/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: userMessage }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        
+        // Remove typing indicator and add bot response
+        setMessages((prevMessages) => {
+            const newMessages = prevMessages.filter(msg => msg.text !== '...');
+            return [...newMessages, { text: data.answer, sender: 'bot' }];
+        });
+
+      } catch (error) {
+        console.error('Error fetching chat response:', error);
+        // Remove typing indicator and show error message
+        setMessages((prevMessages) => {
+            const newMessages = prevMessages.filter(msg => msg.text !== '...');
+            return [...newMessages, { text: 'Sorry, something went wrong. Please try again.', sender: 'bot' }];
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

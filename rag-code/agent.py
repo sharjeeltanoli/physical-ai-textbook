@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from agents import enable_verbose_stdout_logging
 import cohere
 from qdrant_client import QdrantClient
+import asyncio
 
 # Enable verbose logging to see the agent's thought process.
 enable_verbose_stdout_logging()
@@ -19,26 +20,20 @@ load_dotenv()
 # Disable tracing for this example. Tracing is a feature for debugging and monitoring agent execution.
 set_tracing_disabled(disabled=True)
 
-# Set up the Gemini model using an OpenAI-compatible endpoint.
-# The `AsyncOpenAI` client is configured to point to Google's generative language API.
-gemini_api_key = os.getenv("GOOGLE_API_KEY")
+
+gemini_api_key = os.getenv("OPENROUTER_API_KEY")
 provider = AsyncOpenAI(
     api_key=gemini_api_key,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    base_url="https://openrouter.ai/api/v1"
 )
 
-# The `OpenAIChatCompletionsModel` is used to interact with the language model.
-# We are using the "models/gemini-2.5-flash" model.
+
 model = OpenAIChatCompletionsModel(
-    model="models/gemini-2.5-flash",
+    model="xiaomi/mimo-v2-flash:free",
     openai_client=provider
 )
 
-# Initialize the Cohere client for generating embeddings.
-# Embeddings are numerical representations of text that capture semantic meaning.
 cohere_client = cohere.Client(os.getenv("COHERE_API_KEY"))
-# Connect to the Qdrant vector database.
-# Qdrant is used to store and retrieve the embeddings.
 qdrant = QdrantClient(
     url=os.getenv("QDRANT_URL"),
     api_key=os.getenv("QDRANT_API_KEY")
@@ -77,20 +72,34 @@ agent = Agent(
     name="Assistant",
     instructions="""
 You are an AI tutor for the Physical AI & Humanoid Robotics textbook.
-To answer the user question, first call the tool `retrieve` with the user query.
-Use ONLY the returned content from `retrieve` to answer.
-If the answer is not in the retrieved content, say "I don't know".
+
+Instructions:
+1. Call the `retrieve` tool with the user's query
+2. Use ONLY the returned content to answer
+3. Provide a clear, direct answer without repeating the question
+4. Do not include headers like "## What is..." or restate the question
+5. If the answer is not in the retrieved content, respond with: 
+   "I couldn't find information about that in the course materials. Could you try rephrasing your question or ask about a different topic from the course?"
+
+Response Format:
+- Start immediately with the answer
+- Be concise and informative
+- Use the content naturally without explicitly mentioning "based on the retrieved content"
 """,
     model=model,
     tools=[retrieve]
 )
 
-# Run the agent with a sample input.
-# The `Runner.run_sync` function executes the agent and waits for the result.
-result = Runner.run_sync(
-    agent,
-    input="what is physical ai?",
-)
+if __name__ == '__main__':
+    async def main():
+        # Run the agent with a sample input.
+        # The `Runner.run` function executes the agent and waits for the result.
+        result = await Runner.run(
+            agent,
+            input="what is physical ai?",
+        )
 
-# Print the final output from the agent.
-print(result.final_output)
+        # Print the final output from the agent.
+        print(result.final_output)
+
+    asyncio.run(main())

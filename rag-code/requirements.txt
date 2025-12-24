@@ -5,3 +5,8 @@ qdrant-client
 trafilatura
 requests
 lxml
+openai-agents
+fastapi
+uvicorn
+tinyagents
+sqlean.py
