@@ -1,4 +1,5 @@
 # Python virtual environments
+.venv-tinyagents
 .venv/
 rag-code/.venv/
 venv/
