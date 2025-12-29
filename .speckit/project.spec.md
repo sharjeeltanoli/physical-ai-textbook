@@ -59,7 +59,7 @@ A user can sign up, create a profile, and receive personalized content recommend
 - **FR-003**: Chapters MUST cover Physical AI fundamentals, ROS 2, simulation, humanoid development, and conversational robotics.
 - **FR-004**: The book website MUST be built using Docusaurus.
 - **FR-005**: The RAG chatbot backend MUST be implemented using FastAPI.
-- **FR-006**: The chatbot functionality MUST leverage OpenAI Agents/ChatKit SDK.
+- **FR-006**: The chatbot functionality MUST leverage the **Cohere API** for embeddings and response generation.
 - **FR-007**: The database for the project MUST be Neon Serverless Postgres.
 - **FR-008**: The vector database for RAG MUST be Qdrant Cloud (free tier).
 - **FR-009**: User authentication MUST be handled by Better-Auth.
@@ -113,7 +113,7 @@ The book will be structured as a 13-week course, divided into 4 main modules wit
 
 #### Backend (FastAPI)
 - **Framework**: FastAPI for high performance and ease of API development.
-- **OpenAI Integration**: Utilize OpenAI Agents/ChatKit SDK for managing conversation flow, tool use, and agent orchestration.
+- **Cohere Integration**: Utilize the Cohere API for managing conversation flow, text embedding, and response generation.
 - **Endpoints**:
   - `POST /chat`: Main chat endpoint.
     - **Request Body**: `{ "user_id": "string", "message": "string", "chapter_context": "string (optional)" }`
@@ -125,9 +125,9 @@ The book will be structured as a 13-week course, divided into 4 main modules wit
     - **Response Body**: `{ "status": "healthy" }`
 - **Component Interactions**:
   1. Frontend sends user query to FastAPI.
-  2. FastAPI routes query to OpenAI Agents, providing book chapter context (from Qdrant) and potentially selected text.
-  3. OpenAI Agent processes query, performs RAG lookup (via Qdrant), and generates a response.
-  4. FastAPI stores conversation history in Neon Postgres and returns response to frontend.
+  2. FastAPI retrieves relevant context from Qdrant by embedding the query with the Cohere API.
+  3. FastAPI sends the query and the retrieved context to the Cohere Chat API to generate a response.
+  4. FastAPI stores conversation history in Neon Postgres and returns the response to the frontend.
 
 #### Database (Neon Serverless Postgres)
 - **Purpose**: Store user profiles, authentication details, and chat conversation history.
@@ -165,7 +165,7 @@ The book will be structured as a 13-week course, divided into 4 main modules wit
   - `code_examples`:
     - Stores embedded code snippets from chapters.
     - Metadata: `chapter_id`, `example_id`, `language`, `code_content`, `explanation`.
-- **Embedding Model**: `text-embedding-3-small` (OpenAI).
+- **Embedding Model**: Cohere `embed-english-v3.0`.
 - **Ingestion**: A separate script will process all Markdown chapters and code examples, chunk them, embed them, and upload to Qdrant.
 
 #### Chatbot Features
@@ -224,36 +224,26 @@ The book will be structured as a 13-week course, divided into 4 main modules wit
 .
 ├── .speckit/
 │   └── project.spec.md
-├── docs/
-│   ├── chapters/
-│   │   ├── module1-ros2/
-│   │   │   ├── week3-intro-ros2.md
-│   │   │   └── ...
-│   │   ├── module2-gazebo-unity/
-│   │   │   └── ...
-│   │   ├── module3-nvidia-isaac/
-│   │   │   └── ...
-│   │   └── module4-vla/
-│   │       └── ...
-│   ├── images/
-│   │   └── ...
-│   └── code-examples/
-│       └── ...
-├── chatbot/
+├── physical-ai-textbook/
+│   ├── docusaurus.config.ts
+│   ├── package.json
+│   └── docusaurus/
+│       ├── docs/
+│       │   ├── module1/
+│       │   │   ├── intro-ros2.md
+│       │   │   └── ...
+│       │   ├── module2/
+│       │   └── ...
+│       ├── src/
+│       │   ├── components/
+│       │   └── pages/
+│       └── static/
+│           └── img/
+├── rag-code/
 │   ├── main.py (FastAPI app)
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── routes.py
-│   │   └── schemas.py
-│   ├── services/
-│   │   ├── __init__.py
-│   │   ├── openai_agent.py
-│   │   ├── qdrant_client.py
-│   │   └── db_client.py
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── database.py (SQLAlchemy models)
-│   ├── config.py
+│   ├── api.py
+│   ├── agent.py
+│   ├── retrieve.py
 │   └── requirements.txt
 ├── scripts/
 │   ├── ingest_qdrant.py (for embedding book content)
@@ -264,14 +254,12 @@ The book will be structured as a 13-week course, divided into 4 main modules wit
 │       ├── frontend-ci-cd.yml
 │       └── backend-ci-cd.yml
 ├── .env.example
-├── README.md
-├── docusaurus.config.js
-└── package.json
+└── README.md
 ```
 
 ### 9. Configuration Files
-- **`.env`**: For API keys (OpenAI, Better-Auth, Qdrant), database connection strings (Neon), and other sensitive environment variables.
-- **`docusaurus.config.js`**: Frontend configuration, theme settings, navigation structure.
+- **`.env`**: For API keys (Cohere, Better-Auth, Qdrant), database connection strings (Neon), and other sensitive environment variables.
+- **`docusaurus.config.ts`**: Frontend configuration, theme settings, navigation structure.
 - **`package.json`**: Frontend dependencies.
 - **`requirements.txt`**: Backend Python dependencies.
 - **GitHub Actions YAMLs**: CI/CD pipeline definitions.
